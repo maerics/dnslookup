@@ -61,6 +61,12 @@ func TestResultMarshalOmitsEmptyFields(t *testing.T) {
 	}
 }
 
+func TestLookupHostUnknownType(t *testing.T) {
+	if _, err := lookupHost("example.com", []string{"BOGUS"}); err == nil {
+		t.Error("lookupHost with unknown type = nil error, want error")
+	}
+}
+
 func equal(a, b []string) bool {
 	if len(a) != len(b) {
 		return false

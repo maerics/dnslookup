@@ -16,9 +16,9 @@ import (
 
 type CLI struct {
 	Version kong.VersionFlag `help:"Print version and exit." short:"v"`
-	Host    string           `arg:"" help:"Hostname to look up."`
+	Hosts   []string         `arg:"" name:"host" help:"Hostname(s) to look up."`
 	Types   []string         `short:"t" default:"A,AAAA,CNAME,MX,NS,TXT" help:"Record types to query (comma-separated)."`
-	YAML    bool             `help:"Output YAML instead of JSON."`
+	YAML    bool             `help:"Output YAML instead of JSON." short:"y"`
 }
 
 // Linked at build time.
@@ -50,51 +50,66 @@ func main() {
 	var cli CLI
 	kong.Parse(&cli, kong.UsageOnError(), kong.Vars{"version": getVersionString()})
 
-	result := Result{Host: cli.Host}
-	for _, t := range cli.Types {
+	var buf bytes.Buffer
+	for _, host := range cli.Hosts {
+		result, err := lookupHost(host, cli.Types)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "dnslookup:", err)
+			os.Exit(1)
+		}
+
+		var out []byte
+		if cli.YAML {
+			out, err = yaml.Marshal(result)
+			buf.WriteString("---\n")
+		} else {
+			out, err = json.MarshalIndent(result, "", "  ")
+		}
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "dnslookup:", err)
+			os.Exit(1)
+		}
+		buf.Write(out)
+		buf.WriteString("\n")
+	}
+	printResult(buf.Bytes(), cli.YAML)
+}
+
+// lookupHost resolves the requested record types for host, returning an
+// error if an unknown record type is requested.
+func lookupHost(host string, types []string) (Result, error) {
+	result := Result{Host: host}
+	for _, t := range types {
 		switch strings.ToUpper(strings.TrimSpace(t)) {
 		case "A":
-			result.A = lookupIP(cli.Host, false)
+			result.A = lookupIP(host, false)
 		case "AAAA":
-			result.AAAA = lookupIP(cli.Host, true)
+			result.AAAA = lookupIP(host, true)
 		case "CNAME":
-			if cname, err := net.LookupCNAME(cli.Host); err == nil {
+			if cname, err := net.LookupCNAME(host); err == nil {
 				result.CNAME = cname
 			}
 		case "MX":
-			if mxs, err := net.LookupMX(cli.Host); err == nil {
+			if mxs, err := net.LookupMX(host); err == nil {
 				for _, mx := range mxs {
 					result.MX = append(result.MX, MXRecord{Host: mx.Host, Pref: mx.Pref})
 				}
 			}
 		case "TXT":
-			if txt, err := net.LookupTXT(cli.Host); err == nil {
+			if txt, err := net.LookupTXT(host); err == nil {
 				result.TXT = txt
 			}
 		case "NS":
-			if nss, err := net.LookupNS(cli.Host); err == nil {
+			if nss, err := net.LookupNS(host); err == nil {
 				for _, ns := range nss {
 					result.NS = append(result.NS, ns.Host)
 				}
 			}
 		default:
-			fmt.Fprintf(os.Stderr, "dnslookup: unknown record type %q\n", t)
-			os.Exit(1)
+			return Result{}, fmt.Errorf("unknown record type %q", t)
 		}
 	}
-
-	var out []byte
-	var err error
-	if cli.YAML {
-		out, err = yaml.Marshal(result)
-	} else {
-		out, err = json.MarshalIndent(result, "", "  ")
-	}
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "dnslookup:", err)
-		os.Exit(1)
-	}
-	printResult(out, cli.YAML)
+	return result, nil
 }
 
 func lookupIP(host string, v6 bool) []string {
@@ -118,8 +133,9 @@ func filterIPs(ips []net.IP, v6 bool) []string {
 	return out
 }
 
-// printResult pretty-prints data by piping it through jq (JSON) or yq
-// (YAML), falling back to a plain print if the tool is unavailable or fails.
+// printResult prints data (a stream of JSON documents, or YAML documents
+// separated by "---") by piping it through jq (JSON) or yq (YAML), falling
+// back to a plain print if the tool is unavailable or fails.
 func printResult(data []byte, useYAML bool) {
 	name, args := "jq", []string{"."}
 	if useYAML {

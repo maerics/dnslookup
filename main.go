@@ -17,7 +17,7 @@ import (
 type CLI struct {
 	Version kong.VersionFlag `help:"Print version and exit." short:"v"`
 	Host    string           `arg:"" help:"Hostname to look up."`
-	Types   []string         `short:"t" default:"A,AAAA,CNAME,MX,TXT,NS" help:"Record types to query (comma-separated)."`
+	Types   []string         `short:"t" default:"A,AAAA,CNAME,MX,NS,TXT" help:"Record types to query (comma-separated)."`
 	YAML    bool             `help:"Output YAML instead of JSON."`
 }
 

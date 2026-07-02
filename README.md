@@ -12,7 +12,7 @@ Arguments:
 Flags:
   -h, --help       Show context-sensitive help.
   -v, --version    Print version and exit.
-  -t, --types=A,AAAA,CNAME,MX,TXT,NS,...
+  -t, --types=A,AAAA,CNAME,MX,NS,TXT,...
                    Record types to query (comma-separated).
       --yaml       Output YAML instead of JSON.
 ```

@@ -37,7 +37,7 @@ type Result struct {
 
 func main() {
 	var cli CLI
-	kong.Parse(&cli)
+	kong.Parse(&cli, kong.UsageOnError())
 
 	result := Result{Host: cli.Host}
 	for _, t := range cli.Types {

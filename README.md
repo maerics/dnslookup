@@ -10,10 +10,11 @@ Arguments:
   <host>    Hostname to look up.
 
 Flags:
-  -h, --help    Show context-sensitive help.
+  -h, --help       Show context-sensitive help.
+  -v, --version    Print version and exit.
   -t, --types=A,AAAA,CNAME,MX,TXT,NS,...
-                Record types to query (comma-separated).
-      --yaml    Output YAML instead of JSON.
+                   Record types to query (comma-separated).
+      --yaml       Output YAML instead of JSON.
 ```
 
 ## Examples

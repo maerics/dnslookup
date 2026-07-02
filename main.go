@@ -15,9 +15,20 @@ import (
 )
 
 type CLI struct {
-	Host  string   `arg:"" help:"Hostname to look up."`
-	Types []string `short:"t" default:"A,AAAA,CNAME,MX,TXT,NS" help:"Record types to query (comma-separated)."`
-	YAML  bool     `help:"Output YAML instead of JSON."`
+	Version kong.VersionFlag `help:"Print version and exit." short:"v"`
+	Host    string           `arg:"" help:"Hostname to look up."`
+	Types   []string         `short:"t" default:"A,AAAA,CNAME,MX,TXT,NS" help:"Record types to query (comma-separated)."`
+	YAML    bool             `help:"Output YAML instead of JSON."`
+}
+
+// Linked at build time.
+var version, commit, date string
+
+func getVersionString() string {
+	if version == "" {
+		return "(unknown)"
+	}
+	return fmt.Sprintf("v%v, commit=%v, timestamp=%v", version, commit, date)
 }
 
 type MXRecord struct {
@@ -37,7 +48,7 @@ type Result struct {
 
 func main() {
 	var cli CLI
-	kong.Parse(&cli, kong.UsageOnError())
+	kong.Parse(&cli, kong.UsageOnError(), kong.Vars{"version": getVersionString()})
 
 	result := Result{Host: cli.Host}
 	for _, t := range cli.Types {

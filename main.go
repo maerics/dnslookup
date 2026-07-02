@@ -2,10 +2,12 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"net"
 	"os"
+	"os/exec"
 	"strings"
 
 	"github.com/alecthomas/kong"
@@ -81,7 +83,7 @@ func main() {
 		fmt.Fprintln(os.Stderr, "dnslookup:", err)
 		os.Exit(1)
 	}
-	fmt.Println(string(out))
+	printResult(out, cli.YAML)
 }
 
 func lookupIP(host string, v6 bool) []string {
@@ -89,6 +91,12 @@ func lookupIP(host string, v6 bool) []string {
 	if err != nil {
 		return nil
 	}
+	return filterIPs(ips, v6)
+}
+
+// filterIPs returns the string form of the IPv6 addresses in ips if v6 is
+// true, or the IPv4 addresses otherwise.
+func filterIPs(ips []net.IP, v6 bool) []string {
 	var out []string
 	for _, ip := range ips {
 		isV4 := ip.To4() != nil
@@ -97,4 +105,23 @@ func lookupIP(host string, v6 bool) []string {
 		}
 	}
 	return out
+}
+
+// printResult pretty-prints data by piping it through jq (JSON) or yq
+// (YAML), falling back to a plain print if the tool is unavailable or fails.
+func printResult(data []byte, useYAML bool) {
+	name, args := "jq", []string{"."}
+	if useYAML {
+		name, args = "yq", []string{"e", "."}
+	}
+	if path, err := exec.LookPath(name); err == nil {
+		cmd := exec.Command(path, args...)
+		cmd.Stdin = bytes.NewReader(data)
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		if cmd.Run() == nil {
+			return
+		}
+	}
+	fmt.Println(string(data))
 }

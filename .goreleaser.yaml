@@ -43,20 +43,24 @@ changelog:
       - "^docs:"
       - "^test:"
 
-brews:
+homebrew_casks:
   - name: dnslookup
-    goarm: 6
-    goamd64: v1
-    url_template: "https://github.com/maerics/dnslookup/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
-    download_strategy: CurlDownloadStrategy
+    url:
+      template: "https://github.com/maerics/dnslookup/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
     commit_author:
       name: goreleaserbot
       email: bot@goreleaser.com
-    commit_msg_template: "Brew formula update for {{ .ProjectName }} version {{ .Tag }}"
-    directory: Formula
+    commit_msg_template: "Brew cask update for {{ .ProjectName }} version {{ .Tag }}"
     homepage: "https://github.com/maerics/dnslookup"
-    description: "Resolve DNS records for a host and print them as JSON or YAML."
+    description: "Resolve DNS records for hosts and print them as JSON or YAML."
     license: "MIT"
+    # Binaries are unsigned; strip the quarantine attribute so macOS runs them.
+    hooks:
+      post:
+        install_steps: |
+          on_macos do
+            run "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "{{ .StagedPath }}/dnslookup"]
+          end
 
     # Repository to push the generated files to.
     repository:
